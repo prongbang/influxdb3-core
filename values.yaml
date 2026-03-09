@@ -1,0 +1,90 @@
+replicaCount: 1
+
+image:
+  repository: influxdb
+  tag: "3.8.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 8181
+  annotations: {}
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
+  storageClass: ""
+
+influxdb:
+  nodeId: "node-0"
+  httpBindAddr: "0.0.0.0:8181"
+
+  # file | memory | s3
+  objectStore: "file"
+
+  # ใช้กับ objectStore=file
+  dataDir: "/var/lib/influxdb3"
+
+  # optional
+  pluginDir: "/plugins"
+  logFilter: "info"
+
+  # auth
+  adminToken: ""
+  existingSecret: ""
+  existingSecretKey: "admin-token"
+
+  # extra env แบบ raw
+  extraEnv: []
+  # ตัวอย่าง:
+  # extraEnv:
+  #   - name: INFLUXDB3_MAX_HTTP_REQUEST_SIZE
+  #     value: "10485760"
+
+  # extra args ต่อท้าย command
+  extraArgs: []
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 6

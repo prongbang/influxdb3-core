@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "influxdb3-core.fullname" . }}
+  labels:
+    {{- include "influxdb3-core.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "influxdb3-core.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "influxdb3-core.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "influxdb3-core.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "influxdb3-core.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: influxdb3-core
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          command:
+            - influxdb3
+            - serve
+
+          args:
+            - --node-id={{ .Values.influxdb.nodeId }}
+            - --object-store={{ .Values.influxdb.objectStore }}
+            - --http-bind={{ .Values.influxdb.httpBindAddr }}
+
+            {{- if eq .Values.influxdb.objectStore "file" }}
+            - --data-dir={{ .Values.influxdb.dataDir }}
+            {{- end }}
+
+            {{- if .Values.influxdb.pluginDir }}
+            - --plugin-dir={{ .Values.influxdb.pluginDir }}
+            {{- end }}
+
+            {{- range .Values.influxdb.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+
+          env:
+            - name: LOG_FILTER
+              value: {{ .Values.influxdb.logFilter | quote }}
+
+            {{- if .Values.influxdb.adminToken }}
+            - name: INFLUXDB3_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "influxdb3-core.secretName" . }}
+                  key: {{ .Values.influxdb.existingSecretKey }}
+            {{- else if .Values.influxdb.existingSecret }}
+            - name: INFLUXDB3_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "influxdb3-core.secretName" . }}
+                  key: {{ .Values.influxdb.existingSecretKey }}
+            {{- end }}
+
+            {{- if eq .Values.influxdb.objectStore "s3" }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.influxdb.s3.accessKeyId | quote }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.influxdb.s3.secretAccessKey | quote }}
+            {{- if .Values.influxdb.s3.region }}
+            - name: AWS_REGION
+              value: {{ .Values.influxdb.s3.region | quote }}
+            {{- end }}
+            {{- end }}
+
+            {{- with .Values.influxdb.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          ports:
+            - name: http
+              containerPort: 8181
+              protocol: TCP
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          volumeMounts:
+            {{- if and .Values.persistence.enabled (ne .Values.influxdb.objectStore "memory") }}
+            - name: data
+              mountPath: {{ .Values.influxdb.dataDir }}
+            {{- end }}
+            {{- if .Values.influxdb.pluginDir }}
+            - name: plugins
+              mountPath: {{ .Values.influxdb.pluginDir }}
+            {{- end }}
+
+      volumes:
+        - name: plugins
+          emptyDir: {}
+        {{- if and .Values.persistence.enabled (ne .Values.influxdb.objectStore "memory") }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "influxdb3-core.fullname" . }}
+        {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
