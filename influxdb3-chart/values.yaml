@@ -43,7 +43,10 @@ persistence:
   accessModes:
     - ReadWriteOnce
   size: 20Gi
-  storageClass: ""
+  # need:
+  # microk8s status
+  # microk8s enable hostpath-storage
+  storageClass: "microk8s-hostpath"
 
 influxdb:
   nodeId: "node-0"
@@ -61,7 +64,7 @@ influxdb:
 
   # auth
   adminToken: ""
-  existingSecret: ""
+  existingSecret: "admin-token"
   existingSecretKey: "admin-token"
 
   # extra env แบบ raw
