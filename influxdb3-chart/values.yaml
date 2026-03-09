@@ -28,8 +28,9 @@ securityContext:
   readOnlyRootFilesystem: false
 
 service:
-  type: ClusterIP
+  type: LoadBalancer # ClusterIP
   port: 8181
+  targetPort: 8181
   annotations: {}
 
 resources: {}
@@ -64,7 +65,7 @@ influxdb:
 
   # auth
   adminToken: ""
-  existingSecret: "admin-token"
+  existingSecret: ""
   existingSecretKey: "admin-token"
 
   # extra env แบบ raw
