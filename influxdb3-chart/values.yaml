@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: influxdb
-  tag: "3.8.0"
+  tag: "3.8.3-core"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
